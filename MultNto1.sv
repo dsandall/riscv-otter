@@ -19,6 +19,8 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
+
+/*
 module Mult6to1(In1, In2, In3, In4, In5, In6, Sel, Out);
     input [31:0] In1, In2, In3, In4, In5, In6; //32-bit inputs 
     input [3:0] Sel; //selector signal
@@ -34,6 +36,7 @@ module Mult6to1(In1, In2, In3, In4, In5, In6, Sel, Out);
             default: Out <= In1; 
         endcase
 endmodule
+*/
 
 /*
 module Mult5to1(In1, In2, In3, In4, In5, Sel, Out);
@@ -55,7 +58,7 @@ endmodule
 module Mult4to1(In1, In2, In3, In4, Sel, Out);
     input [31:0] In1, In2, In3, In4; //four 64-bit inputs 
     input [1:0] Sel; //selector signal
-    output logic [31:0] Out; //64-bit output
+    output logic [31:0] Out=0; //64-bit output
     always_comb
         case (Sel) //a 4->1 multiplexor
             0: Out <= In1; 

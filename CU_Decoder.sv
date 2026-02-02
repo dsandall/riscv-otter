@@ -2,6 +2,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
 // Engineer: J. Callenes
+//           Dylan Sandall
 // 
 // Create Date: 01/27/2019 09:22:55 AM
 // Design Name: 
@@ -18,120 +19,105 @@
 // Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
-//`include "opcodes.svh"
 
 module OTTER_CU_Decoder(
-    input [6:0] CU_OPCODE,
-    input [2:0] CU_FUNC3,
-    input [6:0] CU_FUNC7,
-    input CU_BR_EQ,
-    input CU_BR_LT,
-    input CU_BR_LTU,
-    input intTaken,
+//  Edited to accept all IR as input rather than seperate chunks
+//    input [6:0] CU_OPCODE, //changed to CU_IR[6:0]
+//    input [2:0] CU_FUNC3,  //changed to CU_IR[14:12]
+//    input [6:0] CU_FUNC7,  //changed to CU_IR[31:25]
+
+    input [31:0] CU_IR,
+    output logic CU_REGWRITE,
+    output logic CU_MEMWRITE,
+    output logic CU_MEMREAD2,
     output logic CU_ALU_SRCA,
     output logic [1:0] CU_ALU_SRCB,
     output logic [3:0] CU_ALU_FUN,
-    output logic [1:0] CU_RF_WR_SEL,   
-    output logic [3:0] CU_PCSOURCE
-    //output logic [1:0] CU_MSIZE
+    output logic [1:0] CU_RF_WR_SEL,
+    output logic RS1_USED,
+    output logic RS2_USED,
+    output logic RD_USED,
+    output logic [4:0] RD_ADDR,
+    output logic [4:0] RS1_ADDR, 
+    output logic [4:0] RS2_ADDR,
+    output logic [2:0] MEM_TYPE
    );
-        typedef enum logic [6:0] {
-                   LUI      = 7'b0110111,
-                   AUIPC    = 7'b0010111,
-                   JAL      = 7'b1101111,
-                   JALR     = 7'b1100111,
-                   BRANCH   = 7'b1100011,
-                   LOAD     = 7'b0000011,
-                   STORE    = 7'b0100011,
-                   OP_IMM   = 7'b0010011,
-                   OP       = 7'b0110011,
-                   SYSTEM   = 7'b1110011
-        } opcode_t;
-        
-        
-        typedef enum logic [2:0] {
-                Func3_CSRRW  = 3'b001,
-                Func3_CSRRS  = 3'b010,
-                Func3_CSRRC  = 3'b011,
-                Func3_CSRRWI = 3'b101,
-                Func3_CSRRSI = 3'b110,
-                Func3_CSRRCI = 3'b111,
-                Func3_PRIV   = 3'b000       //mret
-        } funct3_system_t;
 
-       
-        opcode_t OPCODE;
-        assign OPCODE = CU_OPCODE;
-        
-        logic brn_cond;
-        //DECODING  (does not depend on state)  ////////////////////////////////////////////
-       //SEPERATE DECODER
-       // assign CU_ALU_FUN = (CU_OPCODE!=LUI)? (CU_OPCODE== )? {CU_FUNC7[5],CU_FUNC3}:4'b1001 ;
-        always_comb
-            case(CU_OPCODE)
-                OP_IMM: CU_ALU_FUN= (CU_FUNC3==3'b101)?{CU_FUNC7[5],CU_FUNC3}:{1'b0,CU_FUNC3};
-                LUI,SYSTEM: CU_ALU_FUN = 4'b1001;
-                OP: CU_ALU_FUN = {CU_FUNC7[5],CU_FUNC3};
-//                AUIPC: 4'b0;
-//                LOAD: 4'b0;
-//                STORE: 4'b0;
+        // turns IR into opcode object, made more readable
+        typedef enum logic [6:0] {
+            LUI      = 7'b0110111, //U type, writes U immediate (alu output) to RD 
+            AUIPC    = 7'b0010111, //U type, writes U + PC (alu output) to RD
+            JAL      = 7'b1101111, //J type, PC+4 to RD
+            JALR     = 7'b1100111, //I type, writes PC+4 to RD
+            BRANCH   = 7'b1100011, //B type, does not write to RD
+            LOAD     = 7'b0000011, //I type, writes memory to RD
+            STORE    = 7'b0100011, //S type, does not write to RD
+            OP_IMM   = 7'b0010011, //I type, writes ALU to RD
+            OP       = 7'b0110011, //R type, writes ALU to RD
+            SYSTEM   = 7'b1110011
+        } opcode_t;
+        opcode_t OPCODE;    //create object OPCODE
+        //assign OPCODE = opcode_t'(CU_IR[6:0]);  //assign object actual value
+        assign OPCODE = CU_IR[6:0];  //assign object actual value
+
+        //  FOR ALU source select
+        //  ALU src is 0 (rs1), unless U type
+        assign CU_ALU_SRCA = (OPCODE==LUI || OPCODE==AUIPC) ? 1 : 0;
+
+        // FOR MEM
+        assign CU_MEMWRITE = OPCODE == STORE;
+        assign CU_MEMREAD2 = OPCODE == LOAD;
+                
+        // FOR WB
+        assign CU_REGWRITE = (OPCODE!=BRANCH) && (OPCODE!=STORE);
+
+        always_comb begin
+            //  FOR ALU operation control
+            case(OPCODE)
+                // if opcode is type immediate, and func3 code is 101, 
+                // set alufun to IR[30]+func3 else 0+func3
+                    OP_IMM: CU_ALU_FUN= (CU_IR[14:12]==3'b101)?{CU_IR[30],CU_IR[14:12]}:{1'b0,CU_IR[14:12]};
+                // if opcode is LUI or SYS, set alufun to 1001 
+                    LUI,SYSTEM: CU_ALU_FUN = 4'b1001;
+                // if opcode is OP, 
+                    OP: CU_ALU_FUN = {CU_IR[30],CU_IR[14:12]};
+                // else, set to 0
                 default: CU_ALU_FUN = 4'b0;
             endcase
-            
-            always_comb
-            case(CU_FUNC3)
-                        3'b000: brn_cond = CU_BR_EQ;     //BEQ 
-                        3'b001: brn_cond = ~CU_BR_EQ;    //BNE
-                        3'b100: brn_cond = CU_BR_LT;     //BLT
-                        3'b101: brn_cond = ~CU_BR_LT;    //BGE
-                        3'b110: brn_cond = CU_BR_LTU;    //BLTU
-                        3'b111: brn_cond = ~CU_BR_LTU;   //BGEU
-                        default: brn_cond =0;
-            endcase
-            
-         always_comb
-         begin
-            //if(state==1 || state==2)
-                case(CU_OPCODE)
-                    JAL:    CU_RF_WR_SEL=0;
-                    JALR:    CU_RF_WR_SEL=0;
-                    LOAD:    CU_RF_WR_SEL=2;
-                    SYSTEM:  CU_RF_WR_SEL=1;
-                    default: CU_RF_WR_SEL=3; 
-                endcase
-            //else CU_RF_WR_SEL=3;   
-          end   
-          
-          
-         always_comb
-         begin
-         // if(state!=0)
-            case(CU_OPCODE)
+
+            //  FOR ALU source select
+            case(OPCODE)
                 STORE:  CU_ALU_SRCB=2;  //S-type
                 LOAD:   CU_ALU_SRCB=1;  //I-type
                 JAL:    CU_ALU_SRCB=1;  //I-type
                 OP_IMM: CU_ALU_SRCB=1;  //I-type
-                AUIPC:  CU_ALU_SRCB=3;  // U-type (special) LUI does not use B
+                AUIPC:  CU_ALU_SRCB=3;  //U-type (special) LUI does not use B
                 default:CU_ALU_SRCB=0;  //R-type    //OP  BRANCH-does not use
             endcase
-          //else CU_ALU_SRCB=3;
-         end
-         
-         always_comb begin
-                case(CU_OPCODE)
-                    JAL: CU_PCSOURCE =3'b011;
-                    JALR: CU_PCSOURCE=3'b001;
-                    BRANCH: CU_PCSOURCE=(brn_cond)?3'b010:2'b000;
-                    SYSTEM: CU_PCSOURCE = (CU_FUNC3==Func3_PRIV)? 3'b101:3'b000;
-                    default: CU_PCSOURCE=3'b000; 
-                endcase
-                if(intTaken)    
-                    CU_PCSOURCE=3'b100;   
+            
+            // FOR WB source select
+            case(OPCODE)
+                JAL:    CU_RF_WR_SEL=0;
+                JALR:    CU_RF_WR_SEL=0;
+                LOAD:    CU_RF_WR_SEL=2;
+                SYSTEM:  CU_RF_WR_SEL=1;
+                default: CU_RF_WR_SEL=3; 
+            endcase
         end
-         
-        
-       assign CU_ALU_SRCA = (CU_OPCODE==LUI || CU_OPCODE==AUIPC) ? 1 : 0;
-                
-        //assign CU_MSIZE = CU_FUNC3[1:0];        
 
+        assign RD_ADDR   = CU_IR[11:7];
+        assign RS1_ADDR  = CU_IR[19:15]; 
+        assign RS2_ADDR  = CU_IR[24:20];
+        assign MEM_TYPE  = CU_IR[14:12];
+        assign RS1_USED        = RS1_ADDR != 0
+                            && OPCODE != LUI
+                            && OPCODE != AUIPC
+                            && OPCODE != JAL;
+        assign RS2_USED        = RS2_ADDR != 0 
+                         &&(OPCODE == BRANCH
+                            | OPCODE == STORE
+                            | OPCODE == OP);
+        assign RD_USED        = RD_ADDR != 0
+                            && OPCODE != BRANCH
+                            && OPCODE != STORE;                
 endmodule

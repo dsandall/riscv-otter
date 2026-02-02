@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 //////////////////////////////////////////////////////////////////////////////////
 // Company: 
-// Engineer: J. Callenes
+// Engineer: J. Calllenes
 //           P. Hummel
 // 
 // Create Date: 01/20/2019 10:36:50 AM
@@ -22,16 +22,16 @@
 //                 programmer and performance counter (MCU clock cycles). Minor
 //                 style changes.
 // Additional Comments:
-// test    
+// test 
 //////////////////////////////////////////////////////////////////////////////////
 
-module OTTER_Wrapper_Programmable(
-    input CLK,
+module OTTER_Wrapper(
+    input sclk,
     input BTNL,
     input BTNC,
     input [15:0] SWITCHES,
-    input RX,
-    output TX,
+//    input RX,
+//    output TX,
     output [15:0] LEDS,
     output [7:0] CATHODES,
     output [3:0] ANODES
@@ -47,8 +47,8 @@ module OTTER_Wrapper_Programmable(
     localparam SSEG_AD     = 32'h110C0000;
     
     // Signals for connecting OTTER_MCU to OTTER_wrapper /////////////////////////
-    logic s_interrupt, s_reset;
-    logic sclk = '0;
+    logic s_reset;
+    //logic sclk = '0;
 
     // Registers for IOBUS ///////////////////////////////////////////////////////   
     logic [15:0] r_SSEG = '0;
@@ -60,27 +60,25 @@ module OTTER_Wrapper_Programmable(
     logic IOBUS_wr;
    
     // Declare OTTER_CPU /////////////////////////////////////////////////////////
-    OTTER_MCU MCU(.EXT_RESET(s_reset), .INTR(s_interrupt), .CLK(sclk), 
+    OTTER_MCU MCU(.RESET(s_reset), .CLK(sclk), 
                   .IOBUS_OUT(IOBUS_out), .IOBUS_IN(IOBUS_in),
-                  .IOBUS_ADDR(IOBUS_addr), .IOBUS_WR(IOBUS_wr),
-                  .PROG_RX(RX)/*, .PROG_TX(TX)*/);
+                  .IOBUS_ADDR(IOBUS_addr), .IOBUS_WR(IOBUS_wr));
 
     // Declare Seven Segment Display /////////////////////////////////////////////
-    SevSegDisp SSG_DISP(.DATA_IN(r_SSEG), .CLK(CLK), .MODE(1'b0),
+    SevSegDisp SSG_DISP(.DATA_IN(r_SSEG), .CLK(sclk), .MODE(1'b0),
                         .CATHODES(CATHODES), .ANODES(ANODES));
 
     // Connect LEDS register to port /////////////////////////////////////////////
     assign LEDS = r_LEDS;
    
     // Debounce/one-shot the reset and interrupt buttons /////////////////////////
-    debounce_one_shot DB_I(.CLK(sclk), .BTN(BTNL), .DB_BTN(s_interrupt));
     debounce_one_shot DB_R(.CLK(sclk), .BTN(BTNC), .DB_BTN(s_reset));
-   
+    /*
     // Clock divider to create 50 MHz clock for MCU //////////////////////////////
     always_ff @(posedge CLK) begin
         sclk <= ~sclk;
     end
-   
+    */
     // Performance counter (MCU clock cycles) ////////////////////////////////////
     always_ff @(posedge sclk) begin
         r_CLKCNT = r_CLKCNT + 1;

@@ -1,29 +1,24 @@
 {
     "default_part": "XC7A35TCPG236-1",
     "values": {
-        "top": "OTTER_Wrapper_Programmable"
+        "top": "OTTER_Wrapper"
     },
     "dependencies": {
           "sources": [
             "ArithLogicUnit.sv",
             "BCD.sv",
-            "bram_dualport.sv",
+            "bram_dualport_pipeline3.sv",
+            "branch_cond.sv",
             "CathodeDriver.sv",
-            "ControlUnit.sv",
-            "CSR.sv",
             "CU_Decoder.sv",
             "debounce_one_shot.sv",
-            "Mult4to1.sv",
-            "OTTER_CPU.sv",
+            "hazard_control.sv",
+            "MultNto1.sv",
+            "otter_mcu_pipeline_template_v2.sv",
             "OTTER_Wrapper.sv",
             "ProgCount.sv",
-            "programmer.sv",
             "registerFile.sv",
-            "SevSegDisp.sv",
-            "uart_rx.sv",
-            "uart_rx_word.sv",
-            "uart_tx.sv",
-            "uart_tx_word.sv"
+            "SevSegDisp.sv"
           ],
         "synth_log": "synth.log",
         "pack_log": "pack.log"
