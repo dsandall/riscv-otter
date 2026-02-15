@@ -2,3 +2,4 @@ OtterProj
 *.7z
 build
 *.log
+.f4cache
