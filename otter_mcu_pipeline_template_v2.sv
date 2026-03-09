@@ -128,8 +128,12 @@ module OTTER_MCU(
 
 //==== Instruction Decode ===========================================
     // ==== pipeline logic ==== 
-    
-    assign OPCODE = IR[6:0];  //assign object actual value     
+`ifdef VIVADO
+  `define CAST(t, v) t'(v)
+`else
+  `define CAST(t, v) v
+`endif
+    assign OPCODE =`CAST(opcode_t, IR[6:0]);  //assign object actual value     
     
     always_ff @(posedge CLK) begin
         if (!stall) begin
