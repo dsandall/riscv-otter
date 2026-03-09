@@ -53,8 +53,14 @@ module OTTER_CU_FSM (
   //wire CU_OPCODE =CU_IR[6:0];
   //wire func3 = CU_IR[14:12];
 
+`ifdef VIVADO
+  `define CAST(t, v) t'(v)
+`else
+  `define CAST(t, v) v
+`endif
+
   opcode_t OPCODE;
-  assign OPCODE = CU_OPCODE;
+  assign OPCODE = `CAST(opcode_t, CU_OPCODE);
 
   typedef enum logic [2:0] {
     Func3_CSRRW  = 3'b001,

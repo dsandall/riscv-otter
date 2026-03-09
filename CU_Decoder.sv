@@ -60,8 +60,14 @@ module OTTER_CU_Decoder (
   } funct3_system_t;
 
 
+`ifdef VIVADO
+  `define CAST(t, v) t'(v)
+`else
+  `define CAST(t, v) v
+`endif
+
   opcode_t OPCODE;
-  assign OPCODE = CU_OPCODE;
+  assign OPCODE = `CAST(opcode_t, CU_OPCODE);
 
   logic brn_cond;
   //DECODING  (does not depend on state)  ////////////////////////////////////////////
